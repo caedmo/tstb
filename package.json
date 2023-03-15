@@ -1,0 +1,36 @@
+{
+  "name": "tradebot",
+  "version": "1.0.0",
+  "description": "TBC",
+  "main": "index.ts",
+  "scripts": {
+    "test": "env TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\", \"target\": \"es2017\", \"strict\": true, \"strictNullChecks\": true}' mocha -r ts-node/register 'test/**/*.test.ts'",
+    "playbook": "ts-node ./src/Playbook.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caedmo/tstb.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/caedmo/tstb/issues"
+  },
+  "homepage": "https://github.com/caedmo/tstb#readme",
+  "dependencies": {
+    "dotenv": "^16.0.3",
+    "kraken-api": "^1.0.1",
+    "redis": "^4.6.4",
+    "talib": "^1.1.4",
+    "uuid": "^9.0.0",
+    "yaml": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^10.0.0",
+    "@types/uuid": "^8.3.4",
+    "chai": "^4.3.6",
+    "mocha": "^10.1.0",
+    "ts-node": "^10.9.1"
+  }
+}

@@ -1,0 +1,151 @@
+# MOCKUP FOR YAML TEMPLATE PARSING AND TESTING
+
+# Playbook schema version, required
+version: 1
+
+# Paper trading (default is `true`)
+# WARNING: Set to `false` for real transactions
+#dryrun: true
+
+# Analysis
+analysis:
+  rsi14:
+    config:
+      inRealField: close
+      optInTimePeriod: 14
+      startIndex: 14
+    type: RSI
+
+# Assets
+asset:
+  btc:
+    # label: Bitcoin
+    symbol: BTC
+  eth:
+    # label: Ethereum
+    symbol: ETH
+
+# Charts
+chart:
+  ethBtcKraken4h:
+    # datasetFile: test/Kraken-ETHBTC-2023-01-02-13-04-20.json
+    pair: ethBtcKraken
+    pollTime: 1s # One second
+    candleTime: 4h # Four hours
+
+# Exchanges
+exchange:
+  # paper:
+  kraken:
+    class: Kraken
+    # Optional override the item `name`
+    # Be careful to use unique values, 
+    # or you may run into strange problems
+    name: Kraken
+
+# Orders
+order:
+  ethBtcKrakenBuy:
+    #dryrun: true
+    pair: ethBtcKraken
+    position: ethBtcKraken
+    side: buy
+    type: market
+    # type: limit:-5%
+    quantity: 10%
+  ethBtcKrakenSell:
+    #dryrun: true
+    pair: ethBtcKraken
+    position: ethBtcKraken
+    side: sell
+    type: market
+    # type: limit:+5%
+    quantity: 10%
+
+# Positions
+position:
+  ethBtcKraken:
+    pair: ethBtcKraken
+
+# Pairs
+pair:
+  ethBtcKraken:
+    a: eth
+    b: btc
+    exchange: kraken
+
+# Scenarios
+scenario:
+  rsi14BearishOverbought:
+    analysis:
+      - rsi14
+    condition:
+      - # Previous candle
+        - [outReal, '>=', 70]
+      - # Latest candle
+        - [outReal, '<=', 70]
+  rsi14BullishOversold:
+    analysis:
+      - rsi14
+    condition:
+      - # Previous candle
+        - [outReal, '<=', 30]
+      - # Latest candle
+        - [outReal, '>=', 30]
+
+# Strategies
+strategy:
+  rsi14BearishOverbought:
+    action:
+      # Optional second parameter strategy
+      # Executed whenever the scenario matches
+      # i.e. [scenario, strategy]
+      - [rsi14BearishOverbought]
+    analysis:
+      - rsi14
+    chart: ethBtcKraken4h
+  rsi14BullishOversold:
+    action:
+      # Optional second parameter strategy
+      # Executed whenever the scenario matches
+      # i.e. [scenario, strategy]
+      - [rsi14BullishOversold]
+    analysis:
+      - rsi14
+    chart: ethBtcKraken4h
+
+# Subscriptions
+subscription:
+  ethBtcKrakenSubscription:
+
+    # See `eth-btc-mockup.ts`
+    action:
+      - actionEthBtcBuy
+    chart: ethBtcKraken4h
+    condition:
+      - [total, '>=', 1]
+    timeframeAny:
+      - rsi14BullishOversold
+  ethBtcKrakenSell:
+    action:
+      - actionEthBtcSell
+    chart: ethBtcKraken4h
+    condition:
+      - [total, '>=', 1]
+    timeframeAny:
+      - rsi14BearishOverbought
+
+# Timeframes
+timeframe:
+  rsi14BearishOverbought:
+    intervalTime: 5s
+    keepalive: false # Runs once
+    strategy:
+      - rsi14BearishOverbought
+    windowTime: 10d # Ten days
+  rsi14BullishOversold:
+    intervalTime: 5s
+    keepalive: false # Runs once
+    strategy:
+      - rsi14BullishOversold
+    windowTime: 20d # Twenty days
