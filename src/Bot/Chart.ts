@@ -170,8 +170,10 @@ export class ChartItem implements ChartData {
 			}
 		}
 
+		// Deduct one candle, to ensure we receive overlapping data 
+		// and avoid missing delta
 		if (nextTime)
-			this.datasetNextTime = nextTime
+			this.datasetNextTime = nextTime - this.candleTime;
 
 		let logLine = `Chart '${this.name}'; Refreshed dataset'`;
 
@@ -204,47 +206,80 @@ export class ChartItem implements ChartData {
 	updateDataset (
 		data: ChartCandleData,
 	) {
-		let replaceDataset: boolean = false;
-		let finalData: any = this.dataset;
+		let finalData: ChartCandleData | undefined = this.dataset;
 
-		let dataLength: number = 0;
-		if (data?.hasOwnProperty(this.datasetTimeField))
-			dataLength = data[this.datasetTimeField].length;
+		// Update existing dataset
+		if (
+			finalData
+			&& this.datasetEndTime
+		) {
 
-		if (this.dataset) {
-			if (this.datasetEndTime) {
-				let datasetEndTimeIndex: number = 0;
-				if (this.dataset?.hasOwnProperty(this.datasetTimeField)) {
-					datasetEndTimeIndex = this.dataset[this.datasetTimeField].lastIndexOf(this.datasetEndTime / 1000);
-					if (datasetEndTimeIndex < 0)
-						datasetEndTimeIndex = this.dataset[this.datasetTimeField].length;
-				}
-				// console.log(`datasetEndTimeIndex: ${datasetEndTimeIndex}`);
-				
-				let dataEndTimeIndex: number = data[this.datasetTimeField].lastIndexOf(this.datasetEndTime / 1000);
-				// console.log(`dataEndTimeIndex: ${dataEndTimeIndex}`);
+			// Get the index of `datasetEndTime` in current dataset
+			let datasetEndTimeIndex: number = 0;
+			if (this.dataset?.hasOwnProperty(this.datasetTimeField)) {
+				datasetEndTimeIndex = this.dataset[this.datasetTimeField].lastIndexOf(this.datasetEndTime / 1000);
 
-				let datasetOffset = datasetEndTimeIndex;
-				// console.log(`datasetOffset: ${datasetOffset}`);
+				// Index not found, default to end of dataset
+				if (datasetEndTimeIndex < 0)
+					datasetEndTimeIndex = this.dataset[this.datasetTimeField].length - 1;
+			}
 
-				for (let i = dataEndTimeIndex; i < data[this.datasetTimeField].length; i++) {
-					for (let j in chartCandleFields) {
-						let field = chartCandleFields[j];
-						if (data.hasOwnProperty(field) && data[field][i] && finalData[field]) {
-							// console.log(`finalData[${field}][${datasetOffset}] = data[${field}][${i}]`);
-							finalData[field][datasetOffset] = data[field][i];
-						}
-						
+			Bot.log(
+				`Chart '${this.name}'; updateDataset; datasetEndTimeIndex: ${datasetEndTimeIndex}`,
+				Log.Verbose
+			);
+
+			let datasetOffset = datasetEndTimeIndex;
+
+
+			// Get the index of `datasetEndTime` in new dataset
+			let dataEndTimeIndex: number = data[this.datasetTimeField].lastIndexOf(this.datasetEndTime / 1000);
+
+			// Index not found, default to start of new dataset
+			if (dataEndTimeIndex < 0) {
+				dataEndTimeIndex = 0;
+				datasetOffset++;
+
+				const datasetEndDate = new Date(this.datasetEndTime);
+				Bot.log(
+					`Chart '${this.name}'; updateDataset; Possible missing delta. Appending received dataset, as it does not include the last known dataset candle '${datasetEndDate.toISOString()}'`,
+					Log.Warn
+				);
+			}
+
+			Bot.log(
+				`Chart '${this.name}'; updateDataset; dataEndTimeIndex: ${dataEndTimeIndex}`,
+				Log.Verbose
+			);
+
+			// Merge new dataset, into exisiting, using the offsets of `datasetEndTime`
+			for (
+				let i = dataEndTimeIndex;
+				i < data[this.datasetTimeField].length;
+				i++
+			) {
+				for (let j in chartCandleFields) {
+					let field = chartCandleFields[j];
+					if (
+						data.hasOwnProperty(field)
+						&& data[field][i]
+						&& finalData[field]
+					) {
+						Bot.log(
+							`Chart '${this.name}'; updateDataset; Mapping 'finalData[${field}][${datasetOffset}] = new[${field}][${i}]'; From '${finalData[field][datasetOffset]}'; To '${data[field][i]}'`,
+							Log.Verbose
+						);
+
+						finalData[field][datasetOffset] = data[field][i];
 					}
-					datasetOffset++;
 				}
-			} else
-				replaceDataset = true;
-		} else
-			replaceDataset = true;
 
+				datasetOffset++;
+			}
+		}
+		
 		// Replace dataset with new data
-		if (replaceDataset)
+		else
 			finalData = data;
 
 		this.dataset = finalData;
